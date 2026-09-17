@@ -81,8 +81,9 @@ export function polygonPerimeter(poly) {
 }
 
 /**
- * @returns {{ outer, inner, lumenArea, lumenRmin, rEq, perimeter }}
- *  lumenArea mm², rEq = equivalent circular radius for Hagen–Poiseuille, perimeter of the outer wall.
+* @returns {{ outer, inner, lumenArea, lumenRmin, rMin, rEq, perimeter }}
+*  lumenArea mm², rEq = equivalent circular radius for Hagen–Poiseuille, perimeter of the outer wall,
+*  rMin = smallest outer radius (ellipse 0.7 r, star 0.64 r …) – the largest hole the tube still covers.
  */
 export function sectionProfiles(section, r, wall, n) {
   if (section === 'star') n = Math.max(n, 20);
@@ -90,5 +91,6 @@ export function sectionProfiles(section, r, wall, n) {
   const inner = innerProfile(outer, wall);
   const lumenArea = inner ? polygonArea(inner) : 0;
   const lumenRmin = inner ? inner.reduce((m, q) => Math.min(m, Math.hypot(q[0], q[1])), Infinity) : 0;
-  return { outer, inner, lumenArea, lumenRmin, rEq: Math.sqrt(lumenArea / Math.PI), perimeter: polygonPerimeter(outer) };
+  const rMin = outer.reduce((m, q) => Math.min(m, Math.hypot(q[0], q[1])), Infinity);
+  return { outer, inner, lumenArea, lumenRmin, rMin, rEq: Math.sqrt(lumenArea / Math.PI), perimeter: polygonPerimeter(outer) };
 }

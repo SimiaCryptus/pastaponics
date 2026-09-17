@@ -15,7 +15,8 @@ export const SECTIONS = ['circle', 'ellipse', 'rsquare', 'star'];
 export const BIASES = ['none', 'top', 'bottom', 'core', 'periphery'];
 export const PORE_MODES = ['explicit', 'material'];
 export const PROCESSES = ['FDM', 'SLA', 'SLS'];
-export const FRAME_MODES = ['none', 'posts', 'rim'];
+// fence = posts + a picket at every grid column/row + top rim; edge tubes get bridge struts to the pickets (§6.5)
+export const FRAME_MODES = ['none', 'posts', 'rim', 'fence'];
 
 export function makeChannel(presetKey, id, extra = {}) {
   const preset = CHANNEL_PRESETS[presetKey] || CHANNEL_PRESETS.water;
@@ -47,7 +48,8 @@ export function defaultSpec() {
       bed: { x: 220, y: 220, z: 250 },
     },
     plate: { thickness: 4, barb: 8, margin: 6 },
-    frame: 'posts',     // none | posts | rim (problem.md §6.5)
+    frame: 'fence',     // none | posts | rim | fence (problem.md §6.5)
+    bridgeSpacing: 20,  // frame bridge struts on one channel are kept ≥ half this apart (mm)
     channels: ['N', 'P', 'K', 'water'].map((k, i) => makeChannel(k, `ch${i}`)),
   };
 }

@@ -74,6 +74,8 @@ export function preflight(meshes, spec, report) {
     out.push({ ok: report.bbox.fitsBed, msg: `bounding box ${s.map((v) => v.toFixed(0)).join(' × ')} mm vs bed ${b.x} × ${b.y} × ${b.z} mm` });
   }
   out.push({ ok: null, msg: 'shells overlap where tubes pass through the plate and where frame parts meet – slicers union them; use per‑channel export for multi‑material' });
-  out.push({ ok: null, msg: 'tubes are anchored only at the plate – long cartridges may need frame bridges (problem.md §6.5) before printing' });
+  const bridges = report ? report.bridges || 0 : 0;
+  if (bridges) out.push({ ok: null, msg: `${bridges} frame bridge strut(s) tie edge tubes to the frame; struts overlap the tube wall (slicer unions them). Interior tubes rely on their own path back to the plate.` });
+  else out.push({ ok: null, msg: 'tubes are anchored only at the plate – set frame = fence for bridge struts (problem.md §6.5) before printing tall cartridges' });
   return out;
 }

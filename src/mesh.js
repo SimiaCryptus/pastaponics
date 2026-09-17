@@ -4,12 +4,14 @@
 //  • explicit pores are punched as watertight wall openings (§6.4 mode b, "slotted wall"); the
 //    pore is one mesh quad, so its size follows mesh quality and is reported
 //  • manifold plate with real port holes (tube stubs pass through; slicer unions the overlap)
-//  • optional frame: corner posts, optionally a top rim
+//  • optional frame: corner posts, top rim, or fence pickets; bridge struts placed by the
+//    post‑processor (problem.md §6.5) are meshed as part of the frame
 // Everything is Z‑up, mm.
 
-import { sub, scale, cross, norm, dot, len, resample, clamp } from './geom.js';
+import { sub, scale, cross, norm, dot, len, resample } from './geom.js';
 import { mulberry32, hashSeed } from './rng.js';
 import { sectionProfiles } from './section.js';
+import { plateLayout, frameLayout } from './layout.js';
 
 export const QUALITY = {
   preview: { key: 'preview', ds: 1.5, segments: 16 },
@@ -165,28 +167,17 @@ export function boxMesh(min, max) {
   return { positions: Float32Array.from(P.flat()), indices: Uint32Array.from(idx) };
 }
 
-/** Plate footprint = routing grid (or a synthetic grid) grown by `plate.margin`, snapped to whole cells. */
-function plateLayout(spec, grid) {
-  const { x: dx, y: dy } = spec.cartridge.dims;
-  const maxD = Math.max(1, ...spec.channels.map((c) => c.diameter));
-  const p = grid ? grid.pitch : maxD + spec.clearanceMin;
-  const nx = grid ? grid.dims[0] : Math.ceil(dx / p), ny = grid ? grid.dims[1] : Math.ceil(dy / p);
-  const o = grid ? grid.origin : [-(nx * p) / 2, -(ny * p) / 2, 0];
-  const mc = Math.ceil(spec.plate.margin / p);
-  const i0 = -mc, i1 = nx - 1 + mc, j0 = -mc, j1 = ny - 1 + mc;
-  return { p, o, i0, i1, j0, j1, extent: { x0: o[0] + i0 * p, x1: o[0] + (i1 + 1) * p, y0: o[1] + j0 * p, y1: o[1] + (j1 + 1) * p } };
-}
 
-function buildPlate(spec, ports, grid, notes) {
+function buildPlate(spec, ports, pl, notes) {
   const t = spec.plate.thickness, N = PLATE_SEGS;
-  const { p, o, i0, i1, j0, j1, extent } = plateLayout(spec, grid);
+  const { p, o, i0, i1, j0, j1 } = pl;
   const h = p / 2;
 
   const holes = new Map();
   for (const port of ports) {
     const i = Math.floor((port.x - o[0]) / p), j = Math.floor((port.y - o[1]) / p);
     const cx = o[0] + (i + 0.5) * p, cy = o[1] + (j + 0.5) * p;
-    const rh = port.r - 0.15;                                   // slightly under the tube OD → solid overlap
+    const rh = Math.max(0.5, port.r - 0.15);   // under the tube's *smallest* outer radius → the wall covers the hole rim in every direction
     const key = `${i},${j}`;
     if (i < i0 || i > i1 || j < j0 || j > j1 || Math.abs(port.x - cx) + rh + 0.4 > h || Math.abs(port.y - cy) + rh + 0.4 > h) {
       notes.push(`plate: ${port.ch} port at (${port.x.toFixed(1)}, ${port.y.toFixed(1)}) does not fit a plate cell – hole omitted, drill manually`);
@@ -234,25 +225,27 @@ function buildPlate(spec, ports, grid, notes) {
     if (i === i0) wall(6, 4);        // −x edge
     if (j === j0) wall(10, 4);       // −y edge
   }
-  return { mesh: B.build(), extent, holeCount: holes.size };
+  return { mesh: B.build(), holeCount: holes.size };
 }
 
-function buildFrame(spec, extent) {
-  const mode = spec.frame === true ? 'posts' : spec.frame || 'none';
-  if (mode === 'none') return null;
-  const s = clamp(spec.plate.margin - 1, 3, 8), inset = 0.5, dz = spec.cartridge.dims.z;
-  const { x0, x1, y0, y1 } = extent;
+/** Posts, rails and bridge struts (geometry from layout.js, bridges from postprocess.js). */
+function buildFrame(spec, pl, bridges, notes) {
+  const layout = frameLayout(spec, pl);
+  if (!layout) return null;
   const parts = [];
-  const corners = [[x0 + inset, y0 + inset], [x1 - inset - s, y0 + inset], [x1 - inset - s, y1 - inset - s], [x0 + inset, y1 - inset - s]];
-  for (const [cx, cy] of corners) parts.push(boxMesh([cx, cy, 0], [cx + s, cy + s, dz]));
-  if (mode === 'rim') {
-    const zt = dz - s;
-    parts.push(boxMesh([x0 + inset + s, y0 + inset, zt], [x1 - inset - s, y0 + inset + s, dz]));
-    parts.push(boxMesh([x0 + inset + s, y1 - inset - s, zt], [x1 - inset - s, y1 - inset, dz]));
-    parts.push(boxMesh([x0 + inset, y0 + inset + s, zt], [x0 + inset + s, y1 - inset - s, dz]));
-    parts.push(boxMesh([x1 - inset - s, y0 + inset + s, zt], [x1 - inset, y1 - inset - s, dz]));
+  for (const b of layout.posts) parts.push(boxMesh(b.min, b.max));
+  for (const r of layout.rails) parts.push(boxMesh(r.min, r.max));
+  for (const br of bridges || []) {
+    const h = br.w / 2;
+    const lo = [0, 1, 2].map((i) => Math.min(br.a[i], br.b[i]) - (i === br.axis ? 0 : h));
+    const hi = [0, 1, 2].map((i) => Math.max(br.a[i], br.b[i]) + (i === br.axis ? 0 : h));
+    parts.push(boxMesh(lo, hi));
   }
-  return { ...mergeMeshes(parts), mode };
+  if (pl.mc === 0) notes.push('frame: plate margin is 0 – the posts stand inside the outer grid cells and collide with tubes; set margin ≥ 3 mm');
+  if (spec.printer.process === 'FDM' && layout.span > spec.printer.maxBridge) {
+    notes.push(`frame: rim spans ${layout.span.toFixed(0)} mm between posts (> max bridge ${spec.printer.maxBridge} mm) – use frame = fence or print with supports`);
+  }
+  return { ...mergeMeshes(parts), mode: layout.mode, postCount: layout.posts.length, bridgeCount: (bridges || []).length };
 }
 
 // ------------------------------------------------------------------ entry point
@@ -277,17 +270,18 @@ export function buildMeshes(routing, spec, quality = QUALITY.preview) {
     }
     tubes.push({ id: ch.id, kind: 'tube', name: c.name, colour: c.colour, wall: c.wall, diameter: c.diameter, ...m });
     if (ch.ports) {
-      ports.push({ x: ch.ports.inlet[0], y: ch.ports.inlet[1], r: c.diameter / 2, ch: c.name });
-      if (ch.ports.outlet) ports.push({ x: ch.ports.outlet[0], y: ch.ports.outlet[1], r: c.diameter / 2, ch: c.name });
+      ports.push({ x: ch.ports.inlet[0], y: ch.ports.inlet[1], r: prof.rMin, ch: c.name });
+      if (ch.ports.outlet) ports.push({ x: ch.ports.outlet[0], y: ch.ports.outlet[1], r: prof.rMin, ch: c.name });
     }
   }
-  const plate = buildPlate(spec, ports, routing.grid, notes);
-  const frame = buildFrame(spec, plate.extent);
+  const pl = plateLayout(spec, routing.grid);
+  const plate = buildPlate(spec, ports, pl, notes);
+  const frame = buildFrame(spec, pl, routing.bridges, notes);
   return {
     tubes,
     plate: { id: 'plate', kind: 'plate', name: 'plate', colour: '#7a8590', holeCount: plate.holeCount, ...plate.mesh },
     frame: frame ? { id: 'frame', kind: 'frame', name: 'frame', colour: '#55606a', ...frame } : null,
     notes,
-    extent: plate.extent,
+    extent: pl.extent,
   };
 }

@@ -2,7 +2,7 @@
 
 import { mulberry32, hashSeed } from './rng.js';
 import { generate } from './generators/index.js';
-import { postprocess } from './postprocess.js';
+import { postprocess, placeBridges } from './postprocess.js';
 import { validate } from './validate.js';
 import { buildMeshes, bboxOf, QUALITY } from './mesh.js';
 
@@ -11,6 +11,7 @@ export function runPipeline(spec, quality = QUALITY.preview) {
   const rng = mulberry32(hashSeed(String(spec.seed)));
   const routing = generate(spec, rng);
   postprocess(routing, spec, rng);
+  placeBridges(routing, spec);
   const report = validate(routing, spec);
   const meshes = buildMeshes(routing, spec, quality);
   report.warnings.push(...meshes.notes);
@@ -38,6 +39,7 @@ export function bundle(result) {
     routing: {
       generator: routing.generator,
       grid: routing.grid,
+      bridges: (routing.bridges || []).map((b) => ({ ...b, a: r3(b.a), b: r3(b.b) })),
       channels: routing.channels.map((c) => ({
         id: c.id, name: c.spec.name, deadEnd: !!c.deadEnd, ports: c.ports, notes: c.notes, cells: c.cells || null,
         centreline: (c.path || []).map(r3),

@@ -21,6 +21,7 @@ export function validate(routing, spec) {
     minBendRadius: Infinity, bendViolations: [], bendViolationCount: 0,
     overhangRuns: [], overhangLength: 0,
     drainMinima: [],
+    bridges: (routing.bridges || []).length,
     rootAccess: null,
   };
 
@@ -31,7 +32,7 @@ export function validate(routing, spec) {
       id: ch.id, name: c.name, colour: c.colour, cells: ch.cells ? ch.cells.length : null,
       deadEnd: !!ch.deadEnd, notes: [...(ch.notes || [])],
       length: 0, volume: 0, surface: 0, deltaP: 0, poresEst: 0, lumenRmin: 0, lumenArea: 0,
-      minClearance: Infinity, minBend: Infinity, drainMinima: 0, overhangRuns: 0,
+      minClearance: Infinity, minBend: Infinity, drainMinima: 0, overhangRuns: 0, bridges: ch.bridges || 0,
     };
     report.channels[ch.id] = row;
     if (c.wall < spec.printer.minWall) row.notes.push(`wall ${c.wall} mm < printer minimum ${spec.printer.minWall} mm`);
@@ -62,7 +63,7 @@ export function validate(routing, spec) {
     }
   }
 
-  clearance(chans, report, cmin, maxD, pitchEq);
+  clearance(chans, report, cmin, maxD, pitchEq, routing.bridges || []);
   curvature(chans, report, bendFactor);
   overhang(chans, report, spec);
   drainability(chans, report);
@@ -72,7 +73,7 @@ export function validate(routing, spec) {
 }
 
 // ---------------------------------------------------------------- clearance
-function clearance(chans, report, cmin, maxD, pitchEq) {
+function clearance(chans, report, cmin, maxD, pitchEq, bridges) {
   const maxR = maxD / 2;
   const segs = [];
   chans.forEach((ch, ci) => {
@@ -86,6 +87,18 @@ function clearance(chans, report, cmin, maxD, pitchEq) {
       });
     }
   });
+  // Frame bridge struts (problem.md §6.5) may touch their own tube and the frame, nothing else.
+  const chIndex = new Map(chans.map((c, i) => [c.id, i]));
+  for (const br of bridges) {
+    const ci = chIndex.get(br.ch);
+    if (ci === undefined) continue;
+    const a = br.a, b = br.b, r = br.w * Math.SQRT1_2;          // half diagonal of the square strut
+    segs.push({
+      n: segs.length, ci, a, b, r, s: 0, stamp: -1, bridge: true,
+      min: [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.min(a[2], b[2])],
+      max: [Math.max(a[0], b[0]), Math.max(a[1], b[1]), Math.max(a[2], b[2])],
+    });
+  }
   const hash = new SpatialHash(Math.max(4, 2 * maxR + cmin + 2));
   for (const s of segs) hash.insert(s, s.min, s.max);
   // Same‑channel pairs closer than this along the path are neighbours on a bend, not approaches.
@@ -95,7 +108,7 @@ function clearance(chans, report, cmin, maxD, pitchEq) {
     hash.query(sub(s.min, mv), add(s.max, mv), (t) => {
       if (t.n <= s.n || t.stamp === s.n) return;
       t.stamp = s.n;
-      if (t.ci === s.ci && Math.abs(t.s - s.s) < skipArc) return;
+      if (t.ci === s.ci && (s.bridge || t.bridge || Math.abs(t.s - s.s) < skipArc)) return;
       const { d, p, q } = segSegClosest(s.a, s.b, t.a, t.b);
       const cl = d - s.r - t.r;
       const rowA = report.channels[chans[s.ci].id], rowB = report.channels[chans[t.ci].id];
@@ -105,7 +118,7 @@ function clearance(chans, report, cmin, maxD, pitchEq) {
       if (cl < cmin - 1e-6) {
         report.clearanceViolationCount++;
         if (report.clearanceViolations.length < CAP) {
-          report.clearanceViolations.push({ a: chans[s.ci].id, b: chans[t.ci].id, clearance: cl, p: lerp(p, q, 0.5) });
+          report.clearanceViolations.push({ a: chans[s.ci].id, b: chans[t.ci].id, clearance: cl, p: lerp(p, q, 0.5), bridge: !!(s.bridge || t.bridge) });
         }
       }
     });
@@ -170,6 +183,10 @@ function drainability(chans, report) {
         if (report.drainMinima.length < CAP) report.drainMinima.push({ ch: ch.id, p: P[(i + j) >> 1] });
       }
       i = j + 1;
+    }
+    if (ch.deadEnd && n >= 2 && P[n - 1][2] < P[n - 2][2] - EPS) {   // a descending dead‑end tip pools slurry
+      row.drainMinima++;
+      if (report.drainMinima.length < CAP) report.drainMinima.push({ ch: ch.id, p: P[n - 1] });
     }
   }
 }

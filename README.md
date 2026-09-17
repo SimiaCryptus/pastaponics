@@ -109,13 +109,16 @@ Pipeline (see `problem.md` §2) and where each stage lives:
 |---|---|---|
 | 1 Spec | `src/spec.js` | presets from `idea.md` §3.2, defaults, JSON normalisation |
 | 2 Routing | `src/generators/*` | k‑colour maze (§4.2), layered Hilbert (§4.1), helices (pipeline test) |
-| 2½ Post‑process | `src/postprocess.js` | organic jitter, straight port stubs, Chaikin smoothing |
+| 2½ Post‑process | `src/postprocess.js`, `src/layout.js` | organic jitter, straight port stubs, Chaikin smoothing, frame‑bridge placement (§6.5) |
 | 3 Validation | `src/validate.js`, `src/section.js` | clearance, bend radius, overhang runs, drain minima, Hagen–Poiseuille ΔP, root‑access flood fill |
-| 4 Solidify | `src/mesh.js` | sweep meshing, wall‑offset cross‑sections, punched pores, plate with port holes, frame |
+| 4 Solidify | `src/mesh.js` | sweep meshing, wall‑offset cross‑sections, punched pores, plate with port holes, frame (posts / rim / fence + bridge struts) |
 | 5 Deliver | `src/viewer.js`, `src/stl.js`, `src/main.js` | three.js viewer + overlays, binary STL / glTF / JSON, pre‑flight |
 Everything is deterministic from the seed. Preview quality (coarser rings) is used
 while editing; exports re‑mesh at print quality and run a watertightness pre‑flight.
-Known gaps: tubes are anchored only at the manifold plate (no frame bridges yet, §6.5);
+Frame `fence` mode adds a picket at every grid column/row and short bridge struts from every
+tube that passes the outer ring of cells to the nearest picket — the only allowed tube contact.
+Struts are checked against all other channels by the validator.
+Known gaps: interior tubes are still supported only via their own path back to the plate;
 explicit pores are meshed as one wall quad each, so their size follows mesh quality
 and is reported rather than matched to the µm spec; 3MF export is not implemented.
 

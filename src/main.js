@@ -103,6 +103,7 @@ function buildPanel() {
     num('smoothing', spec, 'smoothing', { min: 0, max: 4, step: 1, title: 'Chaikin iterations' }),
     num('bend factor', spec, 'bendRadiusFactor', { min: 0.5, max: 4, step: 0.25, title: 'min bend radius = factor × Ø (reported)' }),
     sel('frame', spec, 'frame', FRAME_MODES),
+    num('bridge gap mm', spec, 'bridgeSpacing', { min: 5, step: 5, title: 'frame bridge struts on one channel are kept ≥ half this apart (frame = fence)' }),
     num('plate mm', spec.plate, 'thickness', { min: 1, step: 0.5 }),
     num('barb mm', spec.plate, 'barb', { min: 0, step: 1, title: 'port stub length below the plate' }),
     num('margin mm', spec.plate, 'margin', { min: 0, step: 1 }),
@@ -225,6 +226,9 @@ function renderReport() {
     line(pr.process !== 'FDM' ? null : r.overhangRuns.length === 0 ? true : 'warn',
       pr.process !== 'FDM' ? `overhang: n/a for ${pr.process}` : `overhang: ${r.overhangRuns.length} run(s) steeper than ${pr.maxOverhangDeg}° and longer than ${pr.maxBridge} mm (${fmt(r.overhangLength, 0)} mm total)`),
     line(r.drainMinima.length === 0 ? true : 'warn', `drainability: ${r.drainMinima.length} trapped local minima (need drain pores or SLA/SLS)`),
+    line(spec.frame === 'none' ? null : r.bridges > 0 ? true : 'warn',
+      spec.frame === 'none' ? 'frame: none – tubes anchored only at the plate'
+        : `frame: ${spec.frame} · ${r.bridges} bridge strut(s)${r.bridges ? '' : ' (frame = fence adds pickets to bridge to)'}`),
     line(r.rootAccess.fraction >= 0.98, `root access: ${(r.rootAccess.fraction * 100).toFixed(1)} % of eroded void reachable from the top · void = ${(r.rootAccess.voidFraction * 100).toFixed(0)} % of cartridge`),
     line(r.bbox.fitsBed, `bounding box ${r.bbox.size.map((v) => v.toFixed(0)).join(' × ')} mm · bed ${pr.bed.x} × ${pr.bed.y} × ${pr.bed.z}`),
   );
@@ -241,7 +245,7 @@ function renderReport() {
       el('td', { class: 'num', text: fmt(row.deltaP, 2) }),
       el('td', { class: 'num', text: row.poresEst || '—' }),
       el('td', { class: `num ${row.minClearance < spec.clearanceMin - 1e-6 ? 'bad' : ''}`, text: fmt(row.minClearance, 2) }),
-      el('td', { class: 'muted', text: [...row.notes, row.drainMinima ? `${row.drainMinima} minima` : '', row.overhangRuns ? `${row.overhangRuns} overhang runs` : ''].filter(Boolean).join('; ') }),
+      el('td', { class: 'muted', text: [...row.notes, row.bridges ? `${row.bridges} bridge(s)` : '', row.drainMinima ? `${row.drainMinima} minima` : '', row.overhangRuns ? `${row.overhangRuns} overhang runs` : ''].filter(Boolean).join('; ') }),
     );
     tbody.append(tr);
   }
@@ -312,7 +316,10 @@ async function doExport(kind) {
     if (kind === 'stl') {
       download(toBinarySTL(parts), `${base}.stl`, 'model/stl');
     } else if (kind === 'stl-split') {
-      for (const t of hi.meshes.tubes) download(toBinarySTL([t]), `${base}-${t.name}.stl`, 'model/stl');
+      for (const t of hi.meshes.tubes) {                 // staggered: browsers throttle back‑to‑back downloads
+        download(toBinarySTL([t]), `${base}-${t.name}.stl`, 'model/stl');
+        await new Promise((r) => setTimeout(r, 200));
+      }
       download(toBinarySTL([hi.meshes.plate, hi.meshes.frame].filter(Boolean)), `${base}-plate.stl`, 'model/stl');
     } else if (kind === 'glb') {
       viewer.setModel(hi.meshes);
