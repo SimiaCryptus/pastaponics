@@ -1,12 +1,18 @@
 {
-  "id": "pastaponics",
-  "title": "Pastaponics",
-  "category": "lab",
-  "href": "index.html",
-  "readme": "README.md",
-  "order": 7,
-  "section": "featured",
-  "icon": "PP",
-  "video": "/videos/demo_pasta.mp4",
-  "pitch": "A modular, 3D‑printed hydroponic medium enabling plant‑driven nutrient self‑regulation through spatially differentiated nutrient channels."
+    "id": "pastaponics",
+    "title": "Pastaponics",
+    "description": "A modular, 3D‑printed hydroponic medium enabling plant‑driven nutrient self‑regulation through spatially differentiated nutrient channels.",
+    "tags": [
+        "hydroponics",
+        "3d-printing",
+        "generative-geometry",
+        "plant-biology",
+        "rhizosphere",
+        "three.js"
+    ],
+    "category": "labs",
+    "href": "index.html",
+    "readme": "README.md",
+    "video": "/videos/demo_pasta.mp4",
+    "order": 7
 }
