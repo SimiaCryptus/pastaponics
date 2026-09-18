@@ -6,7 +6,7 @@ Imagine a bowl of noodles. Now imagine that every noodle is actually a tiny,
 porous pipe, and each one carries something different into the bowl — one
 carries nitrogen, another phosphorus, another a splash of living compost tea,
 another just plain water. Now imagine a plant growing its roots down into that
-bowl, free to explore, and free to *choose* which noodles it wants to wrap
+bowl, free to explore, and free to _choose_ which noodles it wants to wrap
 around and drink from.
 
 That's Pastaponics.
@@ -97,31 +97,35 @@ In short: it's a sandbox for designing programmable growing substrates,
 with instant visual feedback and built-in sanity checks, aimed at getting
 from "I have an idea for a nutrient layout" to "I have a printable object"
 as directly as possible.
+
 ## Running the prototype
+
 The tool is a static, dependency‑free web app (three.js is loaded from a CDN via an
 import map). Module scripts need an HTTP origin, so serve the folder rather than
 opening `index.html` from disk:
+
 ```sh
 python3 -m http.server 8000      # then open http://localhost:8000/index.html
 ```
-Pipeline (see `problem.md` §2) and where each stage lives:
-| Stage | File(s) | Notes |
-|---|---|---|
-| 1 Spec | `src/spec.js` | presets from `idea.md` §3.2, defaults, JSON normalisation |
-| 2 Routing | `src/generators/*` | k‑colour maze (§4.2), layered Hilbert (§4.1), helices (pipeline test) |
-| 2½ Post‑process | `src/postprocess.js`, `src/layout.js` | organic jitter, straight port stubs, Chaikin smoothing, frame‑bridge placement (§6.5) |
-| 3 Validation | `src/validate.js`, `src/section.js` | clearance, bend radius, overhang runs, drain minima, Hagen–Poiseuille ΔP, root‑access flood fill |
-| 4 Solidify | `src/mesh.js` | sweep meshing, wall‑offset cross‑sections, punched pores, plate with port holes, frame (posts / rim / fence + bridge struts) |
-| 5 Deliver | `src/viewer.js`, `src/stl.js`, `src/main.js` | three.js viewer + overlays, binary STL / glTF / JSON, pre‑flight |
-Everything is deterministic from the seed. Preview quality (coarser rings) is used
-while editing; exports re‑mesh at print quality and run a watertightness pre‑flight.
-Frame `fence` mode adds a picket at every grid column/row and short bridge struts from every
-tube that passes the outer ring of cells to the nearest picket — the only allowed tube contact.
-Struts are checked against all other channels by the validator.
-Known gaps: interior tubes are still supported only via their own path back to the plate;
-explicit pores are meshed as one wall quad each, so their size follows mesh quality
-and is reported rather than matched to the µm spec; 3MF export is not implemented.
 
+Pipeline (see `problem.md` §2) and where each stage lives:
+
+| Stage                                                                                           | File(s)                                      | Notes                                                                                                                        |
+| ----------------------------------------------------------------------------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 1 Spec                                                                                          | `src/spec.js`                                | presets from `idea.md` §3.2, defaults, JSON normalisation                                                                    |
+| 2 Routing                                                                                       | `src/generators/*`                           | k‑colour maze (§4.2), layered Hilbert (§4.1), helices (pipeline test)                                                        |
+| 2½ Post‑process                                                                                 | `src/postprocess.js`, `src/layout.js`        | organic jitter, straight port stubs, Chaikin smoothing, frame‑bridge placement (§6.5)                                        |
+| 3 Validation                                                                                    | `src/validate.js`, `src/section.js`          | clearance, bend radius, overhang runs, drain minima, Hagen–Poiseuille ΔP, root‑access flood fill                             |
+| 4 Solidify                                                                                      | `src/mesh.js`                                | sweep meshing, wall‑offset cross‑sections, punched pores, plate with port holes, frame (posts / rim / fence + bridge struts) |
+| 5 Deliver                                                                                       | `src/viewer.js`, `src/stl.js`, `src/main.js` | three.js viewer + overlays, binary STL / glTF / JSON, pre‑flight                                                             |
+| Everything is deterministic from the seed. Preview quality (coarser rings) is used              |
+| while editing; exports re‑mesh at print quality and run a watertightness pre‑flight.            |
+| Frame `fence` mode adds a picket at every grid column/row and short bridge struts from every    |
+| tube that passes the outer ring of cells to the nearest picket — the only allowed tube contact. |
+| Struts are checked against all other channels by the validator.                                 |
+| Known gaps: interior tubes are still supported only via their own path back to the plate;       |
+| explicit pores are meshed as one wall quad each, so their size follows mesh quality             |
+| and is reported rather than matched to the µm spec; 3MF export is not implemented.              |
 
 ## Background, briefly
 
@@ -144,7 +148,7 @@ The idea draws on a few different threads:
 
 None of these pieces are individually novel. What's being explored here is
 what happens when you combine them deliberately: a soil substitute that is
-*designed to ask questions*, rather than just designed to grow plants.
+_designed to ask questions_, rather than just designed to grow plants.
 
 ## Who might find this useful or interesting
 

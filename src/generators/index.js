@@ -11,9 +11,9 @@ import { generateMaze } from './maze.js';
  * }
  */
 export const GENERATORS = {
-  maze:    { label: 'k‑colour maze growth (§4.2)', fn: generateMaze },
+  maze: { label: 'k‑colour maze growth (§4.2)', fn: generateMaze },
   hilbert: { label: 'layered Hilbert (§4.1 / Eller)', fn: generateHilbertLayered },
-  helix:   { label: 'k parallel helices (pipeline test)', fn: generateHelix },
+  helix: { label: 'k parallel helices (pipeline test)', fn: generateHelix },
 };
 
 export function generate(spec, rng) {

@@ -16,9 +16,16 @@ export function runPipeline(spec, quality = QUALITY.preview) {
   const meshes = buildMeshes(routing, spec, quality);
   report.warnings.push(...meshes.notes);
   const all = allMeshes(meshes);
-  const bb = bboxOf(all), bed = spec.printer.bed;
-  report.bbox = { ...bb, fitsBed: bb.size[0] <= bed.x && bb.size[1] <= bed.y && bb.size[2] <= bed.z };
-  if (!report.bbox.fitsBed) report.warnings.push('model exceeds the print bed – shrink the cartridge or split into modules');
+  const bb = bboxOf(all),
+    bed = spec.printer.bed;
+  report.bbox = {
+    ...bb,
+    fitsBed: bb.size[0] <= bed.x && bb.size[1] <= bed.y && bb.size[2] <= bed.z,
+  };
+  if (!report.bbox.fitsBed)
+    report.warnings.push(
+      'model exceeds the print bed – shrink the cartridge or split into modules'
+    );
   report.triangles = all.reduce((a, m) => a + m.indices.length / 3, 0);
   report.quality = quality.key;
   report.timingMs = performance.now() - t0;
@@ -41,7 +48,12 @@ export function bundle(result) {
       grid: routing.grid,
       bridges: (routing.bridges || []).map((b) => ({ ...b, a: r3(b.a), b: r3(b.b) })),
       channels: routing.channels.map((c) => ({
-        id: c.id, name: c.spec.name, deadEnd: !!c.deadEnd, ports: c.ports, notes: c.notes, cells: c.cells || null,
+        id: c.id,
+        name: c.spec.name,
+        deadEnd: !!c.deadEnd,
+        ports: c.ports,
+        notes: c.notes,
+        cells: c.cells || null,
         centreline: (c.path || []).map(r3),
       })),
     },

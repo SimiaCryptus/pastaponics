@@ -18,8 +18,8 @@ cross-section shape, share of the volume — and every channel must start and en
 no trapped unsupported material, single connected solid), and be delivered both as an
 **interactive model in the UI** and as an **STL for printing**.
 
-Informally: *"draw a bowl of noodles where every noodle is a labelled pipe, nothing
-touches, everything is printable, and the plant can reach all of it."*
+Informally: _"draw a bowl of noodles where every noodle is a labelled pipe, nothing
+touches, everything is printable, and the plant can reach all of it."_
 
 ---
 
@@ -50,6 +50,7 @@ routing algorithms freely and evaluate them with the same validator.
 ## 3. Requirements & constraints
 
 ### 3.1 Functional
+
 - **Multiple channels** (2–8 typical, up to ~16). Each is topologically a single tube
   (or a small tree with one inlet/one outlet) — no unintended cross-connections.
 - **Two ports per channel** on the manifold face(s): inlet and outlet (drain-to-waste
@@ -59,19 +60,20 @@ routing algorithms freely and evaluate them with the same validator.
 - **Tunable spatial bias**: optionally concentrate a channel near the top, bottom,
   core, or periphery (e.g. water channel near the crown, stress channel far away).
 - **Per-channel parameters**:
-  | Parameter          | Range / notes                                    |
-  |--------------------|--------------------------------------------------|
-  | tube outer Ø       | 2–10 mm                                          |
-  | wall thickness     | 0.8–2 mm (printer/material dependent)            |
-  | cross-section      | circle, ellipse, rounded square, star (root grip) |
-  | pore size          | 50–500 µm sterile; ≥ 500 µm for organic slurries |
-  | pore density       | pores / cm² of wall                              |
-  | volume fraction    | fraction of cartridge volume this channel fills  |
-  | target internal V  | mL — derived or specified                        |
-  | path tortuosity    | straight-ish vs highly convoluted                |
-  | flow rate          | µL/min – mL/s (informs Ø and length via pressure drop) |
+  | Parameter         | Range / notes                                          |
+  | ----------------- | ------------------------------------------------------ |
+  | tube outer Ø      | 2–10 mm                                                |
+  | wall thickness    | 0.8–2 mm (printer/material dependent)                  |
+  | cross-section     | circle, ellipse, rounded square, star (root grip)      |
+  | pore size         | 50–500 µm sterile; ≥ 500 µm for organic slurries       |
+  | pore density      | pores / cm² of wall                                    |
+  | volume fraction   | fraction of cartridge volume this channel fills        |
+  | target internal V | mL — derived or specified                              |
+  | path tortuosity   | straight-ish vs highly convoluted                      |
+  | flow rate         | µL/min – mL/s (informs Ø and length via pressure drop) |
 
 ### 3.2 Geometric
+
 - **Clearance** `c_min` between any two tube outer surfaces (default 1.5–3 mm — roots
   need to squeeze between tubes; also ensures walls don't fuse in print).
 - **Root access**: every point of the void space should be reachable from the top
@@ -81,6 +83,7 @@ routing algorithms freely and evaluate them with the same validator.
 - **No pinch points** in the lumen (interior stays fully open along the path).
 
 ### 3.3 Printability (FDM baseline; SLA/SLS relax some of these)
+
 - Minimum wall ≥ 2 × nozzle width (≈ 0.8 mm at 0.4 mm nozzle).
 - Overhangs: unsupported tube segments limited to ~45° from vertical, or the design
   must be self-supporting (tubes lean on neighbours — but clearance forbids contact!).
@@ -93,10 +96,11 @@ routing algorithms freely and evaluate them with the same validator.
   manifold plate). Disconnected tubes fall over.
 - Bounding volume must fit the print bed (or be split into stackable modules).
 - Pores: for FDM, pores below ~0.5 mm are unreliable → treat "porosity" as either
-  modelled holes (≥ 0.5 mm) or as a *post-process* (laser perforation) or as a
-  *material property* (porous filament / ceramic). Spec must allow all three.
+  modelled holes (≥ 0.5 mm) or as a _post-process_ (laser perforation) or as a
+  _material property_ (porous filament / ceramic). Spec must allow all three.
 
 ### 3.4 Biological / hydraulic
+
 - Flow: for a given pump rate, pressure drop ∝ length / Ø⁴ (Hagen–Poiseuille) —
   long thin tubes may exceed pump head. Validator should estimate ΔP per channel.
 - Slurry channels need larger Ø, gentler bends, and an oxygenation route.
@@ -104,6 +108,7 @@ routing algorithms freely and evaluate them with the same validator.
 - Transparent inspection windows: reserve one face as flat for imaging.
 
 ### 3.5 Software
+
 - Deterministic from a seed (reproducible experiments).
 - Fast enough for interactive parameter tweaking (< ~2 s for a preview-quality result,
   minutes acceptable for final export).
@@ -126,6 +131,7 @@ implementation cost.
 self-avoiding, uniform density, deterministic.
 
 **Extending to multiple channels — options:**
+
 1. **Segmenting** one Hilbert curve into `k` contiguous arcs → each channel gets a
    compact blob. Bad interleaving (channels are spatially segregated), good simplicity.
 2. **Striping** — assign grid cell `i` along the curve to channel `i mod k`. Perfect
@@ -154,7 +160,7 @@ layers), **Lebesgue Z-curve** (jumps, no good), **Sierpiński** (diagonals), or 
 post-process with Chaikin / Catmull-Rom smoothing then re-check clearance.
 
 **Volume control.** Each channel's length is fixed by grid size; volume is tuned by
-Ø. To give channels *different* volume fractions, either assign more sublattice
+Ø. To give channels _different_ volume fractions, either assign more sublattice
 parity classes to one channel, or use the multi-resolution scheme.
 
 **Printability.** Hilbert curves have long horizontal runs (bad for overhangs and
@@ -167,11 +173,12 @@ organic irregularity; hard to bias spatially.
 
 ### 4.2 Maze / spanning-tree algorithms, generalised to 3D and k channels
 
-**Concept.** A maze is a spanning tree of a grid graph. A *perfect* maze on a 3D
-grid touches every cell; a *Hamiltonian path* through the maze's dual is a single
+**Concept.** A maze is a spanning tree of a grid graph. A _perfect_ maze on a 3D
+grid touches every cell; a _Hamiltonian path_ through the maze's dual is a single
 self-avoiding tube. For multiple channels: **multi-source competitive growth**.
 
 **Multi-channel growth ("k-colour flood"):**
+
 - Seed `k` growth fronts at the manifold face, one per channel.
 - Repeatedly pick a front (weighted by that channel's remaining volume budget) and
   grow into an unclaimed neighbouring cell (randomised Prim / recursive backtracker
@@ -188,7 +195,7 @@ self-avoiding tube. For multiple channels: **multi-source competitive growth**.
 **Algorithms worth trying:**
 
 | Algorithm                          | Character                                    | 3D-ready |
-|------------------------------------|----------------------------------------------|----------|
+| ---------------------------------- | -------------------------------------------- | -------- |
 | Recursive backtracker              | long winding corridors, few branches         | yes      |
 | Randomised Prim                    | short bushy branches, high surface area      | yes      |
 | Kruskal                            | uniform texture, many short dead ends        | yes      |
@@ -201,7 +208,7 @@ budget. **Spatial bias.** Natural: weight neighbour choice by a scalar field
 (e.g. `water` prefers low z).
 
 **Guarantees.** Full coverage needs a repair step (unclaimed cells → assign to
-nearest channel or leave as void for roots — voids are *good*). Every cell reachable
+nearest channel or leave as void for roots — voids are _good_). Every cell reachable
 by roots? Cells that are void form the root space; check connectivity to top face.
 
 **Verdict.** Most flexible and "soil-like" of the grid methods. Randomness gives
@@ -217,6 +224,7 @@ Optionally follow with a **relaxation** pass (treat tubes as elastic rods with
 repulsive contacts; simulate until clearances are satisfied — like packing spaghetti).
 
 **Variants:**
+
 - **Correlated random walk** with turning-angle distribution → tunable tortuosity.
 - **Potential-field steering**: attract toward unexplored space (coverage), repel from
   other tubes and walls, bias toward channel's preferred zone.
@@ -224,14 +232,14 @@ repulsive contacts; simulate until clearances are satisfied — like packing spa
   (Bullet/PhysX/Rapier) then thicken. Very organic; hard to control; may not converge.
 - **Curl-noise advection**: advect particles through a divergence-free noise field →
   smooth non-crossing streamlines by construction (streamlines of a smooth field don't
-  cross). Clearance between *different* streamlines still needs checking.
+  cross). Clearance between _different_ streamlines still needs checking.
 
 **Pros.** Smooth, curvy, natural-looking; cross-section can vary along the path;
 no grid artefacts. **Cons.** Coverage and volume fractions only approximately
 controlled; may get trapped (dead ends with no legal move → backtrack); clearance is
 checked, not guaranteed; slow-ish. Root access is emergent, must be verified.
 
-**Verdict.** Best aesthetics and most "proto-soil". Good as a *second* generator once
+**Verdict.** Best aesthetics and most "proto-soil". Good as a _second_ generator once
 the pipeline is stable, or as a **smoothing/relaxation stage** applied to grid output
 from 4.1/4.2 (best of both: guaranteed topology, organic geometry).
 
@@ -252,7 +260,7 @@ size = a scalar, printability excellent (self-supporting), roots love the topolo
 **Cons.** Periodic/regular (not "fractal-structural"), k > 2 is awkward, per-channel
 volume differentiation is limited to thickness offsets, and it's not really "tubes".
 
-**Verdict.** Strong alternative for the *water/bio* baseline substrate, and a useful
+**Verdict.** Strong alternative for the _water/bio_ baseline substrate, and a useful
 benchmark. Probably not the primary generator but should be offered as a mode.
 
 ### 4.5 Biologically inspired growth
@@ -265,7 +273,7 @@ benchmark. Probably not the primary generator but should be offered as a mode.
   scatter attraction points in the volume, grow k competing trees toward them,
   each point is consumed by the nearest tree. Gives excellent coverage, natural
   branching, and straightforward per-channel volume budgets (number of attraction
-  points seeded per channel). *Very* promising for interleaving.
+  points seeded per channel). _Very_ promising for interleaving.
 - **Diffusion-limited aggregation / dielectric breakdown**: dendritic, too spiky,
   poor for hollow tubes.
 - **Physarum / slime-mould transport networks**: agents lay down trails, network
@@ -304,7 +312,7 @@ explicitly is valuable regardless** — it is our scoring function for all other
 
 ### 4.8 Hybrid / staged approaches (probably the answer)
 
-1. **Coarse allocation** — decide *where* each channel lives (bias fields, Voronoi
+1. **Coarse allocation** — decide _where_ each channel lives (bias fields, Voronoi
    labels, or sublattice parity).
 2. **Grid routing** — Hilbert or maze growth on a grid whose pitch guarantees
    clearance. Produces a clean, valid graph.
@@ -320,22 +328,23 @@ biology where it's cheap (geometry).
 
 ## 5. Comparison matrix
 
-| Method              | Multi-channel | Clearance | Volume ctrl | Interleave | Organic look | Print | Effort |
-|---------------------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| 4.1 Hilbert/sublattice | ★★★ | ★★★ (proof) | ★★ | ★★★ | ★ | ★★ | low |
-| 4.2 k-colour maze   | ★★★ | ★★★ (grid) | ★★★ | ★★★ | ★★ | ★★ | low–med |
-| 4.3 Noodle/agents   | ★★ | ★★ (checked) | ★★ | ★★ | ★★★ | ★ | med |
-| 4.4 TPMS            | ★ (k≤2 easy) | ★★★ | ★ | ★★★ | ★★ | ★★★ | low |
-| 4.5 Space colonisation | ★★★ | ★★ | ★★★ | ★★★ | ★★★ | ★★ | med |
-| 4.6 Partition-first | ★★★ | ★★★ | ★★ | ★★ | ★★ | ★★ | med |
-| 4.7 Optimisation    | ★★★ | ★★★ | ★★★ | ★★★ | ★★ | ★★★ | high |
-| 4.8 Hybrid          | ★★★ | ★★★ | ★★★ | ★★★ | ★★★ | ★★ | med |
+| Method                 | Multi-channel |  Clearance   | Volume ctrl | Interleave | Organic look | Print | Effort  |
+| ---------------------- | :-----------: | :----------: | :---------: | :--------: | :----------: | :---: | :-----: |
+| 4.1 Hilbert/sublattice |      ★★★      | ★★★ (proof)  |     ★★      |    ★★★     |      ★       |  ★★   |   low   |
+| 4.2 k-colour maze      |      ★★★      |  ★★★ (grid)  |     ★★★     |    ★★★     |      ★★      |  ★★   | low–med |
+| 4.3 Noodle/agents      |      ★★       | ★★ (checked) |     ★★      |     ★★     |     ★★★      |   ★   |   med   |
+| 4.4 TPMS               | ★ (k≤2 easy)  |     ★★★      |      ★      |    ★★★     |      ★★      |  ★★★  |   low   |
+| 4.5 Space colonisation |      ★★★      |      ★★      |     ★★★     |    ★★★     |     ★★★      |  ★★   |   med   |
+| 4.6 Partition-first    |      ★★★      |     ★★★      |     ★★      |     ★★     |      ★★      |  ★★   |   med   |
+| 4.7 Optimisation       |      ★★★      |     ★★★      |     ★★★     |    ★★★     |      ★★      |  ★★★  |  high   |
+| 4.8 Hybrid             |      ★★★      |     ★★★      |     ★★★     |    ★★★     |     ★★★      |  ★★   |   med   |
 
 ---
 
 ## 6. Shared machinery (needed regardless of routing method)
 
 ### 6.1 Data model
+
 ```
   Spec {
     seed, cartridge: { shape: box|cylinder|custom, dims, manifoldFaces[] },
@@ -350,6 +359,7 @@ biology where it's cheap (geometry).
 ```
 
 ### 6.2 Validator (the scoring function)
+
 - **Clearance**: segment–segment distance over all pairs via spatial hash / BVH;
   report min and violations.
 - **Curvature**: discrete turning angle vs bend-radius limit.
@@ -361,7 +371,9 @@ biology where it's cheap (geometry).
 - **Watertightness / manifoldness** of final mesh.
 
 ### 6.3 Solidification (centreline → solid)
+
 Two candidate approaches:
+
 - **Sweep meshing**: generate a frame (RMF / parallel transport) along the spline,
   extrude the cross-section polygon, cap ends, then boolean-union with pores and
   frame. Fast; booleans are fragile (use manifold-3d / OpenCascade / CGAL).
@@ -372,6 +384,7 @@ Two candidate approaches:
   for prototyping; sweep for final high-fidelity export if needed.
 
 ### 6.4 Porosity
+
 Three interchangeable modes: (a) **explicit pores** (SDF subtraction, ≥ 0.5 mm),
 (b) **slotted / mesh wall** (patterned wall, print-friendly), (c) **material
 porosity** (no geometry; annotate for post-processing). Pore placement: Poisson-disk
@@ -379,6 +392,7 @@ sampling on the tube surface with per-channel density; skip pores near junctions
 the manifold.
 
 ### 6.5 Manifold & frame
+
 - Manifold plate on one face with labelled ports (embossed channel letter), barb or
   push-fit geometry, per-channel spacing ≥ tubing OD.
 - Optional structural frame (outer shell with large windows, or vertical posts) to
@@ -387,6 +401,7 @@ the manifold.
 - Optional flat transparent inspection face.
 
 ### 6.6 UI / viewer
+
 - three.js scene, one material per channel (colour-coded), toggle channels, x-ray
   mode, clipping plane slider, click a tube → show its report row.
 - Live regenerate on parameter change (debounced; preview at low grid resolution).
@@ -395,6 +410,7 @@ the manifold.
 - Export panel: STL (binary), 3MF (colour + per-channel objects), glTF, JSON spec.
 
 ### 6.7 STL export
+
 - Binary STL, mm units, Z-up, one solid (or one file per channel + frame for
   multi-material printing).
 - Pre-flight: manifold check, minimum feature size check, bounding box vs bed.
@@ -432,10 +448,10 @@ where it can't break correctness.
   material/biocompatibility. Decide before tuning overhang repair.
 - Cartridge modularity: stackable slabs (each a 2.5D layer — Eller's algorithm fits)
   vs monolithic block?
-- How much irregularity is *actually* wanted? Hypothesis testing (Objective A in
+- How much irregularity is _actually_ wanted? Hypothesis testing (Objective A in
   `idea.md`) may prefer regular, comparable geometry across cartridges; ecological
   realism prefers messy. Make it a slider.
-- Do we want channels to *approach* each other deliberately (e.g. N and P tubes
+- Do we want channels to _approach_ each other deliberately (e.g. N and P tubes
   running side-by-side at exactly `c_min`) to create sharp gradient interfaces?
 
 ---
